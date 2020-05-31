@@ -1,3 +1,5 @@
+mod style;
+
 use rust_decimal_macros::*;
 use std::str::FromStr;
 
@@ -7,6 +9,18 @@ use std::{
     error::Error
 };
 use rust_decimal::Decimal;
+use crate::style::ButtonStyle;
+
+enum LoanType {
+    Annuity,
+    BuildingSavings,
+}
+
+impl Default for LoanType {
+    fn default() -> Self {
+        LoanType::Annuity
+    }
+}
 
 #[derive(Default)]
 struct LoanCalc {
@@ -16,6 +30,7 @@ struct LoanCalc {
     clearance_rate: String,
     monthly_rate: String,
     runtime_years: String,
+    loan_type: LoanType,
     result: Option<CalcResultOverview>
 }
 
@@ -28,6 +43,8 @@ struct LoanCalcState {
     result_scroller: iced::scrollable::State,
     runtime_years: text_input::State,
     monthly_rate: String,
+    annuity_btn: button::State,
+    building_savings_btn: button::State,
 }
 
 #[derive(Debug, Clone)]
@@ -36,6 +53,8 @@ enum Message {
     InterestRateChanged(String),
     ClearanceRateChanged(String),
     RuntimeChanged(String),
+    ChangeTypeToAnnuity,
+    ChangeTypeToBuildingSavings,
     Calc,
 }
 
@@ -63,12 +82,22 @@ impl Sandbox for LoanCalc {
             }
             Message::Calc => {
                 self.result.take();
-                if let Ok(result) = self.calc() {
+                let result = match self.loan_type {
+                    LoanType::Annuity => self.calc_annuity(),
+                    LoanType::BuildingSavings => self.calc_building_saving(),
+                };
+                if let Ok(result) = result {
                     self.result = Some(result);
                 }
             }
             Message::RuntimeChanged(rt) => {
                 self.runtime_years = rt;
+            }
+            Message::ChangeTypeToAnnuity => {
+                self.loan_type = LoanType::Annuity;
+            }
+            Message::ChangeTypeToBuildingSavings => {
+                self.loan_type = LoanType::BuildingSavings;
             }
         }
     }
@@ -81,6 +110,19 @@ impl Sandbox for LoanCalc {
             .push(TextInput::new(&mut self.state.interest_rate, "Interest Rate", &self.interest_rate, Message::InterestRateChanged))
             .push(TextInput::new(&mut self.state.clearance_rate, "Clearance Rate", &self.clearance_rate, Message::ClearanceRateChanged))
             .push(TextInput::new(&mut self.state.runtime_years, "Runtime years", &self.runtime_years, Message::RuntimeChanged))
+            .push(
+                Row::new()
+                    .push(
+                        Button::new(&mut self.state.annuity_btn, Text::new("Annuity"))
+                            .on_press(Message::ChangeTypeToAnnuity)
+                            .style(ButtonStyle { active: matches!(self.loan_type, LoanType::Annuity)})
+                    )
+                    .push(
+                        Button::new(&mut self.state.building_savings_btn, Text::new("Building savings"))
+                            .on_press(Message::ChangeTypeToBuildingSavings)
+                            .style(ButtonStyle { active: matches!(self.loan_type, LoanType::BuildingSavings)})
+                    )
+            )
             .push(Button::new(&mut self.state.calc_button, Text::new("Calc")).on_press(Message::Calc));
 
         if let Some(result) = self.result.as_mut() {
@@ -137,7 +179,40 @@ impl CalcResult {
 }
 
 impl LoanCalc {
-    fn calc(&mut self) -> Result<CalcResultOverview, Box<dyn Error>> {
+    fn calc_building_saving(&mut self) -> Result<CalcResultOverview, Box<dyn Error>> {
+        let mut result = CalcResultOverview::default();
+
+        let amount = self.amount.parse::<Decimal>()?;
+        let interest_rate = Decimal::from_str(&self.interest_rate)? / dec!(100);
+        let clearance_rate = Decimal::from_str(&self.clearance_rate)? / dec!(100);
+        result.monthly_rate = amount * (interest_rate + clearance_rate ) / dec!(12);
+        let runtime = self.runtime_years.parse::<i32>()?;
+
+        for month in 0..=(runtime * 12) {
+            let paid_interest_month = amount * interest_rate / dec!(12) as Decimal;
+            result.overall.paid_interest += paid_interest_month;
+
+            let saved_month = result.monthly_rate - paid_interest_month;
+            result.overall.cleared_amount += saved_month;
+
+            let remaining = amount - result.overall.cleared_amount;
+
+            result.months.push(Box::new(CalcResult {
+                month: month + 1,
+                remaining: remaining.round_dp(2),
+                cleared_amount: saved_month.round_dp(2),
+                paid_interest: paid_interest_month.round_dp(2)
+            }));
+
+        }
+
+        if let Some(last) = result.months.last() {
+            result.overall.remaining = last.remaining.round_dp(2);
+        }
+        Ok(result)
+    }
+
+    fn calc_annuity(&mut self) -> Result<CalcResultOverview, Box<dyn Error>> {
         let mut result = CalcResultOverview::default();
 
         let amount = self.amount.parse::<Decimal>()?;
