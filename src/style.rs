@@ -1,5 +1,5 @@
 use iced::widget::button::Style;
-use iced::{Color, button, Text, Background};
+use iced::{Color, button, Background};
 // use crate::util::icon;
 //
 // pub struct Icons {}
