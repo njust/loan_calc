@@ -48,7 +48,7 @@ struct LoanCalcState {
 }
 
 #[derive(Debug, Clone)]
-enum Message {
+enum LoanCalcMessage {
     AmountChanged(String),
     InterestRateChanged(String),
     ClearanceRateChanged(String),
@@ -58,8 +58,44 @@ enum Message {
     Calc,
 }
 
-impl Sandbox for LoanCalc {
-    type Message = Message;
+#[derive(Clone, Debug)]
+enum AppMessage {
+    LoanCalcMessage(usize, LoanCalcMessage),
+    SelectLoan(usize),
+    AddLoan
+}
+
+#[derive(Default)]
+struct App {
+    active: Option<usize>,
+    loans: Vec<Box<LoanCalc>>,
+    loan_tabs: Vec<Box<LoanTab>>,
+    add_loan_btn: button::State,
+}
+
+struct LoanTab {
+    idx: usize,
+    name: String,
+    button: button::State,
+}
+
+impl LoanTab {
+    fn new(name: String, idx: usize) -> Self {
+        Self {
+            idx,
+            name,
+            button: button::State::default(),
+        }
+    }
+    fn view(&mut self) -> Element<AppMessage> {
+        Button::new(&mut self.button, Text::new(&self.name))
+            .on_press(AppMessage::SelectLoan(self.idx))
+            .into()
+    }
+}
+
+impl Sandbox for App {
+    type Message = AppMessage;
 
     fn new() -> Self {
         Self::default()
@@ -71,16 +107,56 @@ impl Sandbox for LoanCalc {
 
     fn update(&mut self, message: Self::Message) {
         match message {
-            Message::AmountChanged(amount) => {
+            AppMessage::LoanCalcMessage(idx, msg) => {
+                if let Some(calc) = self.loans.get_mut(idx) {
+                    calc.update(msg);
+                }
+            }
+            AppMessage::SelectLoan(idx) => {
+                self.active = Some(idx);
+            }
+            AppMessage::AddLoan =>  {
+                self.loans.push(Box::new(LoanCalc::default()));
+                self.loan_tabs.push(Box::new(LoanTab::new(String::from("New"), self.loan_tabs.len())));
+            }
+        }
+    }
+
+    fn view(&mut self) -> Element<Self::Message> {
+        let mut buttons = self.loan_tabs.iter_mut().enumerate().map(|(idx, loan)| {
+            loan.view()
+        }).fold(Row::new(), |acc, tab| {
+            acc.push(tab)
+        });
+        buttons = buttons.push(
+            Button::new(&mut self.add_loan_btn, Text::new("Add"))
+                .on_press(AppMessage::AddLoan)
+        );
+        let mut col = Column::new()
+            .push(buttons);
+
+        if let Some(idx) = self.active {
+            if let Some(active) = self.loans.get_mut(idx) {
+                col = col.push(active.view().map(move |m| AppMessage::LoanCalcMessage(idx, m)));
+            }
+        }
+        col.into()
+    }
+}
+
+impl LoanCalc {
+    fn update(&mut self, message: LoanCalcMessage) {
+        match message {
+            LoanCalcMessage::AmountChanged(amount) => {
                 self.amount = amount;
             }
-            Message::InterestRateChanged(rate) => {
+            LoanCalcMessage::InterestRateChanged(rate) => {
                 self.interest_rate = rate;
             }
-            Message::ClearanceRateChanged(clearance) => {
+            LoanCalcMessage::ClearanceRateChanged(clearance) => {
                 self.clearance_rate = clearance;
             }
-            Message::Calc => {
+            LoanCalcMessage::Calc => {
                 self.result.take();
                 let result = match self.loan_type {
                     LoanType::Annuity => self.calc_annuity(),
@@ -90,40 +166,40 @@ impl Sandbox for LoanCalc {
                     self.result = Some(result);
                 }
             }
-            Message::RuntimeChanged(rt) => {
+            LoanCalcMessage::RuntimeChanged(rt) => {
                 self.runtime_years = rt;
             }
-            Message::ChangeTypeToAnnuity => {
+            LoanCalcMessage::ChangeTypeToAnnuity => {
                 self.loan_type = LoanType::Annuity;
             }
-            Message::ChangeTypeToBuildingSavings => {
+            LoanCalcMessage::ChangeTypeToBuildingSavings => {
                 self.loan_type = LoanType::BuildingSavings;
             }
         }
     }
 
-    fn view(&mut self) -> Element<Message> {
+    fn view(&mut self) -> Element<LoanCalcMessage> {
         let mut col = Column::new()
             .padding(20)
             .spacing(5)
-            .push(TextInput::new(&mut self.state.amount, "Amount", &self.amount, Message::AmountChanged))
-            .push(TextInput::new(&mut self.state.interest_rate, "Interest Rate", &self.interest_rate, Message::InterestRateChanged))
-            .push(TextInput::new(&mut self.state.clearance_rate, "Clearance Rate", &self.clearance_rate, Message::ClearanceRateChanged))
-            .push(TextInput::new(&mut self.state.runtime_years, "Runtime years", &self.runtime_years, Message::RuntimeChanged))
+            .push(TextInput::new(&mut self.state.amount, "Amount", &self.amount, LoanCalcMessage::AmountChanged))
+            .push(TextInput::new(&mut self.state.interest_rate, "Interest Rate", &self.interest_rate, LoanCalcMessage::InterestRateChanged))
+            .push(TextInput::new(&mut self.state.clearance_rate, "Clearance Rate", &self.clearance_rate, LoanCalcMessage::ClearanceRateChanged))
+            .push(TextInput::new(&mut self.state.runtime_years, "Runtime years", &self.runtime_years, LoanCalcMessage::RuntimeChanged))
             .push(
                 Row::new()
                     .push(
                         Button::new(&mut self.state.annuity_btn, Text::new("Annuity"))
-                            .on_press(Message::ChangeTypeToAnnuity)
+                            .on_press(LoanCalcMessage::ChangeTypeToAnnuity)
                             .style(ButtonStyle { active: matches!(self.loan_type, LoanType::Annuity)})
                     )
                     .push(
                         Button::new(&mut self.state.building_savings_btn, Text::new("Building savings"))
-                            .on_press(Message::ChangeTypeToBuildingSavings)
+                            .on_press(LoanCalcMessage::ChangeTypeToBuildingSavings)
                             .style(ButtonStyle { active: matches!(self.loan_type, LoanType::BuildingSavings)})
                     )
             )
-            .push(Button::new(&mut self.state.calc_button, Text::new("Calc")).on_press(Message::Calc));
+            .push(Button::new(&mut self.state.calc_button, Text::new("Calc")).on_press(LoanCalcMessage::Calc));
 
         if let Some(result) = self.result.as_mut() {
             col = col
@@ -171,7 +247,7 @@ struct CalcResult {
 }
 
 impl CalcResult {
-    fn view(&mut self) -> Element<Message> {
+    fn view(&mut self) -> Element<LoanCalcMessage> {
         Text::new(format!(
             "{} - {} - {} - {}", self.month, self.remaining, self.cleared_amount, self.paid_interest
         )).into()
@@ -247,5 +323,5 @@ impl LoanCalc {
 }
 
 fn main() {
-    LoanCalc::run(Settings::default())
+    App::run(Settings::default())
 }
