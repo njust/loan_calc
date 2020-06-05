@@ -19,7 +19,7 @@ pub struct LoanView {
     clearance_rate: String,
     runtime_years: String,
     loan_type: LoanType,
-    result: Option<CalcResultOverview>
+    pub result: Option<CalcResultOverview>
 }
 
 #[derive(Default)]
@@ -50,17 +50,17 @@ pub enum LoanViewMessage {
 
 #[derive(Default, Debug)]
 pub struct CalcResultOverview {
-    overall: CalcResult,
-    monthly_rate: Decimal,
+    pub overall: CalcResult,
+    pub monthly_rate: Decimal,
     months: Vec<Box<CalcResult>>
 }
 
 #[derive(Default, Debug)]
 pub struct CalcResult {
     month: i32,
-    remaining: Decimal,
-    paid_interest: Decimal,
-    cleared_amount: Decimal,
+    pub remaining: Decimal,
+    pub paid_interest: Decimal,
+    pub cleared_amount: Decimal,
 }
 
 impl CalcResult {
@@ -72,9 +72,9 @@ impl CalcResult {
 }
 
 impl LoanView {
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: String) -> Self {
         Self {
-            name: String::from(name),
+            name,
             ..Self::default()
         }
     }

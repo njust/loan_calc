@@ -1,14 +1,16 @@
 mod style;
 mod loan_view;
 mod util;
+mod overview;
 
 use crate::loan_view::{
     LoanView,
     LoanViewMessage
 };
 
-use iced::{Button, button, Sandbox, Text, Element, Settings, Row, Column};
+use iced::{Button, button, Sandbox, Text, Element, Settings, Row, Column, Length};
 use crate::style::Icons;
+use crate::overview::{Overview, OverviewMessage};
 
 enum LoanType {
     Annuity,
@@ -23,9 +25,12 @@ impl Default for LoanType {
 
 #[derive(Clone, Debug)]
 enum AppMessage {
-    LoanCalcMessage(usize, LoanViewMessage),
+    LoanViewMessage(usize, LoanViewMessage),
+    OverviewMessage(OverviewMessage),
+    ShowOverview,
     SelectLoan(usize),
-    AddLoan
+    AddLoan,
+    DeleteLoan
 }
 
 #[derive(Default)]
@@ -34,6 +39,9 @@ struct App {
     loans: Vec<Box<LoanView>>,
     loan_tabs: Vec<Box<LoanTab>>,
     add_loan_btn: button::State,
+    del_loan_btn: button::State,
+    overview_btn: button::State,
+    overview: Overview,
 }
 
 struct LoanTab {
@@ -58,13 +66,48 @@ impl LoanTab {
     }
 }
 
-const LOAN_DEFAULT_NAME: &'static str = "New loan";
+const LOAN_DEFAULT_NAME: &'static str = "Loan";
+
+impl App {
+    fn add_loan(&mut self) {
+        let idx = self.loan_tabs.len();
+        let loan_name = format!("{} {}", LOAN_DEFAULT_NAME, idx + 1);
+        self.loans.push(Box::new(LoanView::new(loan_name.clone())));
+        self.loan_tabs.push(Box::new(LoanTab::new(loan_name, idx)));
+        self.active = Some(idx);
+    }
+
+    fn delete_active_load(&mut self) {
+        if let Some(active) = self.active.take() {
+            for tab_idx in active..self.loan_tabs.len() {
+                if let Some(tab) = self.loan_tabs.get_mut(tab_idx) {
+                    if tab.idx > 0 {
+                        tab.idx -= 1;
+                    }
+                }
+            }
+
+            self.loan_tabs.remove(active);
+            self.loans.remove(active);
+            if self.loans.len() > 0 {
+                let next = if active == 0 {
+                    0
+                }else {
+                    active -1
+                };
+                self.active = Some(next);
+            }
+        }
+    }
+}
 
 impl Sandbox for App {
     type Message = AppMessage;
 
     fn new() -> Self {
-        Self::default()
+        let mut app = Self::default();
+        app.add_loan();
+        app
     }
 
     fn title(&self) -> String {
@@ -73,15 +116,11 @@ impl Sandbox for App {
 
     fn update(&mut self, message: Self::Message) {
         match message {
-            AppMessage::LoanCalcMessage(idx, msg) => {
-                let lcl = msg.clone();
-                match lcl {
-                    LoanViewMessage::NameChanged(name) => {
-                        if let Some(tab) = self.loan_tabs.get_mut(idx) {
-                            tab.name = name;
-                        }
-                    },
-                    _ => ()
+            AppMessage::LoanViewMessage(idx, msg) => {
+                if let LoanViewMessage::NameChanged(name) = &msg {
+                    if let Some(tab) = self.loan_tabs.get_mut(idx) {
+                        tab.name = name.to_owned();
+                    }
                 }
                 if let Some(calc) = self.loans.get_mut(idx) {
                     calc.update(msg);
@@ -90,20 +129,34 @@ impl Sandbox for App {
             AppMessage::SelectLoan(idx) => {
                 self.active = Some(idx);
             }
+            AppMessage::ShowOverview => {
+                self.active = None;
+            }
             AppMessage::AddLoan =>  {
-                let idx = self.loan_tabs.len();
-                self.loans.push(Box::new(LoanView::new(LOAN_DEFAULT_NAME)));
-                self.loan_tabs.push(Box::new(LoanTab::new(String::from(LOAN_DEFAULT_NAME), idx)));
-                self.active = Some(idx);
+                self.add_loan();
+            }
+            AppMessage::OverviewMessage(_msg) => {
+
+            }
+            AppMessage::DeleteLoan => {
+                self.delete_active_load();
             }
         }
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        let active_tab = self.active.unwrap_or(0);
-        let mut buttons = self.loan_tabs.iter_mut().enumerate().map( |(idx, loan)| {
-            loan.view(idx.clone() == active_tab)
-        }).fold(Row::new(), |acc, tab| {
+        let active_tab = self.active.map(|i|i as i16).unwrap_or(-1);
+        let mut buttons = Row::new()
+            .width(Length::Fill)
+            .push(
+                Button::new(&mut self.overview_btn, Text::new("Overview"))
+                    .style(style::ButtonStyle{active: !self.active.is_some()})
+                    .on_press(AppMessage::ShowOverview)
+            );
+
+        buttons = self.loan_tabs.iter_mut().enumerate().map( |(idx, loan)| {
+            loan.view(idx as i16 == active_tab)
+        }).fold(buttons, |acc, tab| {
             acc.push(tab)
         });
         buttons = buttons.push(
@@ -111,13 +164,25 @@ impl Sandbox for App {
                 .style(style::IconButtonStyle{})
                 .on_press(AppMessage::AddLoan)
         );
+
         let mut col = Column::new()
-            .push(buttons);
+            .push(
+                Row::new()
+                    .width(Length::Fill)
+                    .push(buttons)
+                    .push(
+                        Button::new(&mut self.del_loan_btn, Icons::delete_icon())
+                            .on_press(AppMessage::DeleteLoan)
+                            .style(style::IconButtonStyle{})
+                    )
+            );
 
         if let Some(idx) = self.active {
             if let Some(active) = self.loans.get_mut(idx) {
-                col = col.push(active.view().map(move |m| AppMessage::LoanCalcMessage(idx, m)));
+                col = col.push(active.view().map(move |m| AppMessage::LoanViewMessage(idx, m)));
             }
+        }else {
+            col = col.push(self.overview.view(&self.loans).map(|m| AppMessage::OverviewMessage(m)));
         }
         col.into()
     }

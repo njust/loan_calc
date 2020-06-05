@@ -5,24 +5,24 @@ use crate::util::icon;
 pub struct Icons {}
 
 impl Icons {
-    pub fn edit_icon() -> Text {
-        icon('c')
-    }
-
     pub fn add_icon() -> Text {
         icon('b')
     }
 
-    pub fn leave_icon() -> Text {
-        icon('a')
-    }
-
+    // pub fn edit_icon() -> Text {
+    //     icon('c')
+    // }
+    //
+    // pub fn leave_icon() -> Text {
+    //     icon('a')
+    // }
+    //
     pub fn delete_icon() -> Text {
         icon('d')
     }
-    pub fn back_icon() -> Text {
-        icon('g')
-    }
+    // pub fn back_icon() -> Text {
+    //     icon('g')
+    // }
 }
 
 struct Colors {}

@@ -1,6 +1,5 @@
 use iced::{Font, Text, Length, HorizontalAlignment};
 
-// Fonts
 pub const ICONS: Font = Font::External {
     name: "Icons",
     bytes: include_bytes!("../fonts/app.ttf"),
