@@ -1,29 +1,29 @@
 use iced::widget::button::Style;
-use iced::{Color, button, Background};
-// use crate::util::icon;
-//
-// pub struct Icons {}
-//
-// impl Icons {
-//     pub fn edit_icon() -> Text {
-//         icon('c')
-//     }
-//
-//     pub fn add_icon() -> Text {
-//         icon('b')
-//     }
-//
-//     pub fn leave_icon() -> Text {
-//         icon('a')
-//     }
-//
-//     pub fn delete_icon() -> Text {
-//         icon('d')
-//     }
-//     pub fn back_icon() -> Text {
-//         icon('g')
-//     }
-// }
+use iced::{Color, button, Text, Background};
+use crate::util::icon;
+
+pub struct Icons {}
+
+impl Icons {
+    pub fn edit_icon() -> Text {
+        icon('c')
+    }
+
+    pub fn add_icon() -> Text {
+        icon('b')
+    }
+
+    pub fn leave_icon() -> Text {
+        icon('a')
+    }
+
+    pub fn delete_icon() -> Text {
+        icon('d')
+    }
+    pub fn back_icon() -> Text {
+        icon('g')
+    }
+}
 
 struct Colors {}
 impl Colors {
@@ -31,7 +31,6 @@ impl Colors {
         Color::from_rgba8(0,190, 255, 0.7)
     }
 }
-
 
 pub struct ButtonStyle {
     pub active: bool,

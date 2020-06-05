@@ -13,10 +13,10 @@ use crate::style::ButtonStyle;
 #[derive(Default)]
 pub struct LoanView {
     state: LoanViewState,
+    name: String,
     amount: String,
     interest_rate: String,
     clearance_rate: String,
-    //monthly_rate: String,
     runtime_years: String,
     loan_type: LoanType,
     result: Option<CalcResultOverview>
@@ -24,19 +24,20 @@ pub struct LoanView {
 
 #[derive(Default)]
 struct LoanViewState {
+    name: text_input::State,
     amount: text_input::State,
     interest_rate: text_input::State,
     clearance_rate: text_input::State,
     calc_button: button::State,
     result_scroller: iced::scrollable::State,
     runtime_years: text_input::State,
-    //monthly_rate: String,
     annuity_btn: button::State,
     building_savings_btn: button::State,
 }
 
 #[derive(Debug, Clone)]
 pub enum LoanViewMessage {
+    NameChanged(String),
     AmountChanged(String),
     InterestRateChanged(String),
     ClearanceRateChanged(String),
@@ -71,6 +72,12 @@ impl CalcResult {
 }
 
 impl LoanView {
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: String::from(name),
+            ..Self::default()
+        }
+    }
     pub fn update(&mut self, message: LoanViewMessage) {
         match message {
             LoanViewMessage::AmountChanged(amount) => {
@@ -101,6 +108,9 @@ impl LoanView {
             LoanViewMessage::ChangeTypeToBuildingSavings => {
                 self.loan_type = LoanType::BuildingSavings;
             }
+            LoanViewMessage::NameChanged(name) => {
+                self.name = name;
+            }
         }
     }
 
@@ -108,9 +118,10 @@ impl LoanView {
         let mut col = Column::new()
             .padding(20)
             .spacing(5)
+            .push(TextInput::new(&mut self.state.name, "Name", &self.name, LoanViewMessage::NameChanged))
             .push(TextInput::new(&mut self.state.amount, "Amount", &self.amount, LoanViewMessage::AmountChanged))
-            .push(TextInput::new(&mut self.state.interest_rate, "Interest Rate", &self.interest_rate, LoanViewMessage::InterestRateChanged))
-            .push(TextInput::new(&mut self.state.clearance_rate, "Clearance Rate", &self.clearance_rate, LoanViewMessage::ClearanceRateChanged))
+            .push(TextInput::new(&mut self.state.interest_rate, "Interest rate", &self.interest_rate, LoanViewMessage::InterestRateChanged))
+            .push(TextInput::new(&mut self.state.clearance_rate, "Clearance rate", &self.clearance_rate, LoanViewMessage::ClearanceRateChanged))
             .push(TextInput::new(&mut self.state.runtime_years, "Runtime years", &self.runtime_years, LoanViewMessage::RuntimeChanged))
             .push(
                 Row::new()

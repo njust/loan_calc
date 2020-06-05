@@ -1,5 +1,6 @@
 mod style;
 mod loan_view;
+mod util;
 
 use crate::loan_view::{
     LoanView,
@@ -7,7 +8,7 @@ use crate::loan_view::{
 };
 
 use iced::{Button, button, Sandbox, Text, Element, Settings, Row, Column};
-
+use crate::style::Icons;
 
 enum LoanType {
     Annuity,
@@ -49,12 +50,15 @@ impl LoanTab {
             button: button::State::default(),
         }
     }
-    fn view(&mut self) -> Element<AppMessage> {
+    fn view(&mut self, active: bool) -> Element<AppMessage> {
         Button::new(&mut self.button, Text::new(&self.name))
             .on_press(AppMessage::SelectLoan(self.idx))
+            .style(style::ButtonStyle{active})
             .into()
     }
 }
+
+const LOAN_DEFAULT_NAME: &'static str = "New loan";
 
 impl Sandbox for App {
     type Message = AppMessage;
@@ -70,6 +74,15 @@ impl Sandbox for App {
     fn update(&mut self, message: Self::Message) {
         match message {
             AppMessage::LoanCalcMessage(idx, msg) => {
+                let lcl = msg.clone();
+                match lcl {
+                    LoanViewMessage::NameChanged(name) => {
+                        if let Some(tab) = self.loan_tabs.get_mut(idx) {
+                            tab.name = name;
+                        }
+                    },
+                    _ => ()
+                }
                 if let Some(calc) = self.loans.get_mut(idx) {
                     calc.update(msg);
                 }
@@ -78,20 +91,24 @@ impl Sandbox for App {
                 self.active = Some(idx);
             }
             AppMessage::AddLoan =>  {
-                self.loans.push(Box::new(LoanView::default()));
-                self.loan_tabs.push(Box::new(LoanTab::new(String::from("New"), self.loan_tabs.len())));
+                let idx = self.loan_tabs.len();
+                self.loans.push(Box::new(LoanView::new(LOAN_DEFAULT_NAME)));
+                self.loan_tabs.push(Box::new(LoanTab::new(String::from(LOAN_DEFAULT_NAME), idx)));
+                self.active = Some(idx);
             }
         }
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        let mut buttons = self.loan_tabs.iter_mut().enumerate().map(|(_idx, loan)| {
-            loan.view()
+        let active_tab = self.active.unwrap_or(0);
+        let mut buttons = self.loan_tabs.iter_mut().enumerate().map( |(idx, loan)| {
+            loan.view(idx.clone() == active_tab)
         }).fold(Row::new(), |acc, tab| {
             acc.push(tab)
         });
         buttons = buttons.push(
-            Button::new(&mut self.add_loan_btn, Text::new("Add"))
+            Button::new(&mut self.add_loan_btn, Icons::add_icon())
+                .style(style::IconButtonStyle{})
                 .on_press(AppMessage::AddLoan)
         );
         let mut col = Column::new()
