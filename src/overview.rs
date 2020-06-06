@@ -1,4 +1,4 @@
-use iced::{Element, Text, button, Command};
+use iced::{Element, Text, button, Command, Row};
 use crate::loan_view::{LoanView, LoanViewData};
 use rust_decimal::Decimal;
 use iced_native::{Column, Button};
@@ -55,19 +55,25 @@ impl Overview {
             }
         }
         Column::new()
-            .push(Text::new(format!("Monthly rate: {}, Remaining: {}, Paid interest: {}, Cleared: {}",
+            .spacing(20)
+            .padding(20)
+            .push(Text::new(
+                format!("Monthly rate: {}\nPaid interest: {}\nRemaining: {}\nCleared: {}",
                           monthly_rate.round_dp(2),
-                          remaining.round_dp(2),
                           paid_interest.round_dp(2),
+                          remaining.round_dp(2),
                           cleared_amount.round_dp(2),
         ))).push(
-            Button::new(&mut self.save_btn, Text::new("Save"))
-                .on_press(OverviewMessage::OpenSaveDlg(loans.iter().map(|l| l.data.clone()).collect::<Vec<LoanViewData>>()))
-        ).push(
-            Button::new(&mut self.load_btn, Text::new("Load"))
-                .on_press(OverviewMessage::OpenLoadDlg)
-        )
-            .into()
+            Row::new()
+                .spacing(4)
+                .push(
+                    Button::new(&mut self.save_btn, Text::new("Save"))
+                        .on_press(OverviewMessage::OpenSaveDlg(loans.iter().map(|l| l.data.clone()).collect::<Vec<LoanViewData>>()))
+                ).push(
+                Button::new(&mut self.load_btn, Text::new("Load"))
+                    .on_press(OverviewMessage::OpenLoadDlg)
+            )
+        ).into()
     }
 
     pub fn update(&mut self, msg: OverviewMessage) -> Command<OverviewMessage> {

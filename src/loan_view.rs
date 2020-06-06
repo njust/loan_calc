@@ -161,11 +161,12 @@ impl LoanView {
             col = col
                 .push(
                     Text::new(
-                        format!("Monthly rate: {}, Paid interest: {}, Cleared: {}, Open: {}",
+                        format!("Monthly rate: {}\nPaid interest: {}\nRemaining: {}\nCleared: {}",
                                 result.monthly_rate.round_dp(2),
                                 result.overall.paid_interest.round_dp(2),
+                                result.overall.remaining.round_dp(2),
                                 result.overall.cleared_amount.round_dp(2),
-                                result.overall.remaining.round_dp(2))
+                            )
                     )
                 );
 
