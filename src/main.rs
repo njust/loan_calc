@@ -42,6 +42,7 @@ struct App {
     del_loan_btn: button::State,
     overview_btn: button::State,
     overview: Overview,
+    title: String,
 }
 
 struct LoanTab {
@@ -80,7 +81,9 @@ impl App {
     fn add_loan_with_data(&mut self, data: LoanViewData) {
         let idx = self.loan_tabs.len();
         self.loan_tabs.push(Box::new(LoanTab::new(data.name.clone(), idx)));
-        self.loans.push(Box::new(LoanView::new_with_data(data)));
+        let mut loan_view = LoanView::new_with_data(data);
+        loan_view.calc();
+        self.loans.push(Box::new(loan_view));
         self.active = Some(idx);
     }
 
@@ -115,12 +118,13 @@ impl Application for App {
 
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
         let mut app = Self::default();
+        app.title = String::from("Loan calc");
         app.add_loan();
         (app, Command::none())
     }
 
     fn title(&self) -> String {
-        String::from("Loan calc")
+        self.title.clone()
     }
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
@@ -146,10 +150,11 @@ impl Application for App {
             }
             AppMessage::OverviewMessage(msg) => {
                 if let OverviewMessage::LoadDlgResult(r) = &msg {
-                    if let Ok(data) = r.clone() {
+                    if let Ok(loaded) = r.clone() {
                         self.loans.clear();
                         self.loan_tabs.clear();
-                        for loan in data {
+                        self.title = format!("Loan calc - {}", loaded.file);
+                        for loan in loaded.data {
                             self.add_loan_with_data(loan);
                         }
                     }

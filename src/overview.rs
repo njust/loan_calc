@@ -14,11 +14,17 @@ pub struct Overview {
 }
 
 #[derive(Debug, Clone)]
+pub struct LoadResult {
+    pub file: String,
+    pub data: Vec<LoanViewData>,
+}
+
+#[derive(Debug, Clone)]
 pub enum OverviewMessage {
     OpenSaveDlg(Vec<LoanViewData>),
     SaveDlgResult(std::result::Result<String, DlgErr>),
     OpenLoadDlg,
-    LoadDlgResult(std::result::Result<Vec<LoanViewData>, DlgErr>),
+    LoadDlgResult(std::result::Result<LoadResult, DlgErr>),
 }
 
 #[derive(Debug, Clone)]
@@ -76,12 +82,15 @@ impl Overview {
         }
     }
 
-    async fn load() -> std::result::Result<Vec<LoanViewData>, DlgErr> {
+    async fn load() -> std::result::Result<LoadResult, DlgErr> {
         match nfd::open_file_dialog(Some("lc"), None).map_err(|_| DlgErr::Canceled)? {
             Response::Okay(path) => {
-                let content = std::fs::read(path).map_err(|e| DlgErr::Canceled)?;
+                let content = std::fs::read(&path).map_err(|e| DlgErr::Canceled)?;
                 let data = serde_json::from_slice::<Vec<LoanViewData>>(&content).map_err(|e| DlgErr::Canceled)?;
-                Ok(data)
+                Ok(LoadResult {
+                    data,
+                    file: path
+                })
             }
             Response::Cancel => Err(DlgErr::Canceled),
             Response::OkayMultiple(_) => Err(DlgErr::Canceled),

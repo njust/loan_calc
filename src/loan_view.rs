@@ -188,6 +188,15 @@ impl LoanView {
 }
 
 impl LoanView {
+    pub fn calc(&mut self) {
+        let r = match self.data.loan_type {
+            LoanType::Annuity => self.calc_annuity(),
+            LoanType::BuildingSavings => self.calc_building_saving()
+        };
+        if let Ok(r) = r {
+            self.result = Some(r);
+        }
+    }
     fn calc_building_saving(&mut self) -> Result<CalcResultOverview, Box<dyn Error>> {
         let mut result = CalcResultOverview::default();
 
