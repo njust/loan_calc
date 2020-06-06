@@ -2,10 +2,12 @@ use iced::{Element, Text, button, Command};
 use crate::loan_view::{LoanView, LoanViewData};
 use rust_decimal::Decimal;
 use iced_native::{Column, Button};
-use nfd::{Response, DialogType};
-use std::path::PathBuf;
-use std::error::Error;
-use std::io::ErrorKind;
+use nfd::{Response};
+use std::{
+    result::Result,
+};
+
+const FILE_EXT: &'static str = "lc";
 
 #[derive(Default)]
 pub struct Overview {
@@ -22,14 +24,20 @@ pub struct LoadResult {
 #[derive(Debug, Clone)]
 pub enum OverviewMessage {
     OpenSaveDlg(Vec<LoanViewData>),
-    SaveDlgResult(std::result::Result<String, DlgErr>),
+    SaveDlgResult(Result<(), OverviewErr>),
     OpenLoadDlg,
-    LoadDlgResult(std::result::Result<LoadResult, DlgErr>),
+    LoadDlgResult(Result<LoadResult, OverviewErr>),
 }
 
 #[derive(Debug, Clone)]
-pub enum DlgErr {
-    Canceled
+pub enum OverviewErr {
+    ShowDlgFailed,
+    Canceled,
+    LoadFileFailed,
+    WriteFileFailed,
+    DeserializeFailed,
+    SerializeFailed,
+    MultipleFilesSelected,
 }
 
 impl Overview {
@@ -67,56 +75,37 @@ impl Overview {
             OverviewMessage::OpenSaveDlg(l) => {
                 return Command::perform(Overview::save(l), OverviewMessage::SaveDlgResult);
             }
-            OverviewMessage::SaveDlgResult(res) => {
-                if let Ok(r) = res {
-                    println!("R: {}", r);
-                }
-                Command::none()
-            }
             OverviewMessage::OpenLoadDlg => {
-                return Command::perform(Overview::load(), OverviewMessage::LoadDlgResult)
+                return Command::perform(Overview::load(), OverviewMessage::LoadDlgResult);
             }
-            OverviewMessage::LoadDlgResult(r) => {
-                Command::none()
-            }
+            _ => Command::none()
         }
     }
 
-    async fn load() -> std::result::Result<LoadResult, DlgErr> {
-        match nfd::open_file_dialog(Some("lc"), None).map_err(|_| DlgErr::Canceled)? {
+    async fn load() -> Result<LoadResult, OverviewErr> {
+        match nfd::open_file_dialog(Some(FILE_EXT), None).map_err(|_| OverviewErr::ShowDlgFailed)? {
             Response::Okay(path) => {
-                let content = std::fs::read(&path).map_err(|e| DlgErr::Canceled)?;
-                let data = serde_json::from_slice::<Vec<LoanViewData>>(&content).map_err(|e| DlgErr::Canceled)?;
+                let content = std::fs::read(&path).map_err(|_| OverviewErr::LoadFileFailed)?;
+                let data = serde_json::from_slice::<Vec<LoanViewData>>(&content).map_err(|_| OverviewErr::DeserializeFailed)?;
                 Ok(LoadResult {
                     data,
                     file: path
                 })
             }
-            Response::Cancel => Err(DlgErr::Canceled),
-            Response::OkayMultiple(_) => Err(DlgErr::Canceled),
+            Response::Cancel => Err(OverviewErr::Canceled),
+            Response::OkayMultiple(_) => Err(OverviewErr::MultipleFilesSelected),
         }
     }
 
-    async fn save(data: Vec<LoanViewData>) -> std::result::Result<String, DlgErr>  {
-        match nfd::open_save_dialog(Some("lc"), None).map_err(|e| DlgErr::Canceled)? {
+    async fn save(data: Vec<LoanViewData>) -> Result<(), OverviewErr>  {
+        match nfd::open_save_dialog(Some(FILE_EXT), None).map_err(|_| OverviewErr::ShowDlgFailed)? {
             Response::Okay(path) => {
-                match serde_json::to_string(&data) {
-                    Ok(r) => {
-                        std::fs::write(&path, r).map_err(|e| DlgErr::Canceled);
-                    }
-                    Err(e) => {
-                        eprintln!("E: {:?}", e);
-                    }
-                }
-                Ok(path)
+                let json = serde_json::to_string(&data).map_err(|_| OverviewErr::SerializeFailed)?;
+                std::fs::write(&path, json).map_err(|_| OverviewErr::WriteFileFailed).map_err(|_| OverviewErr::WriteFileFailed)?;
+                Ok(())
             }
-            Response::OkayMultiple(path_list) => {
-                Err(DlgErr::Canceled)
-            }
-            Response::Cancel => {
-                Err(DlgErr::Canceled)
-            }
+            Response::OkayMultiple(_) => Err(OverviewErr::MultipleFilesSelected),
+            Response::Cancel => Err(OverviewErr::Canceled)
         }
     }
-
 }
