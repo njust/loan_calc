@@ -3,15 +3,15 @@ mod loan_view;
 mod util;
 mod overview;
 
-use crate::loan_view::{
-    LoanView,
-    LoanViewMessage
-};
+use crate::loan_view::{LoanView, LoanViewMessage, LoanViewData};
 
-use iced::{Button, button, Sandbox, Text, Element, Settings, Row, Column, Length};
+use serde::{Serialize, Deserialize};
+
+use iced::{Button, button, Application, Text, Element, Settings, Row, Column, Length, Command, executor};
 use crate::style::Icons;
 use crate::overview::{Overview, OverviewMessage};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 enum LoanType {
     Annuity,
     BuildingSavings,
@@ -77,6 +77,13 @@ impl App {
         self.active = Some(idx);
     }
 
+    fn add_loan_with_data(&mut self, data: LoanViewData) {
+        let idx = self.loan_tabs.len();
+        self.loan_tabs.push(Box::new(LoanTab::new(data.name.clone(), idx)));
+        self.loans.push(Box::new(LoanView::new_with_data(data)));
+        self.active = Some(idx);
+    }
+
     fn delete_active_load(&mut self) {
         if let Some(active) = self.active.take() {
             for tab_idx in active..self.loan_tabs.len() {
@@ -101,20 +108,22 @@ impl App {
     }
 }
 
-impl Sandbox for App {
+impl Application for App {
+    type Executor = executor::Default;
     type Message = AppMessage;
+    type Flags = ();
 
-    fn new() -> Self {
+    fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
         let mut app = Self::default();
         app.add_loan();
-        app
+        (app, Command::none())
     }
 
     fn title(&self) -> String {
         String::from("Loan calc")
     }
 
-    fn update(&mut self, message: Self::Message) {
+    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
             AppMessage::LoanViewMessage(idx, msg) => {
                 if let LoanViewMessage::NameChanged(name) = &msg {
@@ -135,13 +144,24 @@ impl Sandbox for App {
             AppMessage::AddLoan =>  {
                 self.add_loan();
             }
-            AppMessage::OverviewMessage(_msg) => {
-
+            AppMessage::OverviewMessage(msg) => {
+                if let OverviewMessage::LoadDlgResult(r) = &msg {
+                    if let Ok(data) = r.clone() {
+                        self.loans.clear();
+                        self.loan_tabs.clear();
+                        for loan in data {
+                            self.add_loan_with_data(loan);
+                        }
+                    }
+                }else {
+                    return self.overview.update(msg).map(|m| AppMessage::OverviewMessage(m));
+                }
             }
             AppMessage::DeleteLoan => {
                 self.delete_active_load();
             }
         }
+        Command::none()
     }
 
     fn view(&mut self) -> Element<Self::Message> {

@@ -4,23 +4,31 @@ use std::str::FromStr;
 
 use iced::{Button, button, TextInput, Text, Element, Row, Column, text_input, Scrollable, Length};
 
+use serde::{Deserialize, Serialize};
+
 use std::{
     error::Error
 };
 use rust_decimal::Decimal;
 use crate::style::ButtonStyle;
 
-#[derive(Default)]
-pub struct LoanView {
-    state: LoanViewState,
-    name: String,
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct LoanViewData {
+    pub name: String,
     amount: String,
     interest_rate: String,
     clearance_rate: String,
     runtime_years: String,
     loan_type: LoanType,
+}
+
+#[derive(Default)]
+pub struct LoanView {
+    state: LoanViewState,
+    pub data: LoanViewData,
     pub result: Option<CalcResultOverview>
 }
+
 
 #[derive(Default)]
 struct LoanViewState {
@@ -74,24 +82,35 @@ impl CalcResult {
 impl LoanView {
     pub fn new(name: String) -> Self {
         Self {
-            name,
-            ..Self::default()
+            state: Default::default(),
+            data: LoanViewData {
+                name,
+                ..LoanViewData::default()
+            },
+            result: None
+        }
+    }
+    pub fn new_with_data(data: LoanViewData) -> Self {
+        Self {
+            state: Default::default(),
+            data,
+            result: None
         }
     }
     pub fn update(&mut self, message: LoanViewMessage) {
         match message {
             LoanViewMessage::AmountChanged(amount) => {
-                self.amount = amount;
+                self.data.amount = amount;
             }
             LoanViewMessage::InterestRateChanged(rate) => {
-                self.interest_rate = rate;
+                self.data.interest_rate = rate;
             }
             LoanViewMessage::ClearanceRateChanged(clearance) => {
-                self.clearance_rate = clearance;
+                self.data.clearance_rate = clearance;
             }
             LoanViewMessage::Calc => {
                 self.result.take();
-                let result = match self.loan_type {
+                let result = match self.data.loan_type {
                     LoanType::Annuity => self.calc_annuity(),
                     LoanType::BuildingSavings => self.calc_building_saving(),
                 };
@@ -100,16 +119,16 @@ impl LoanView {
                 }
             }
             LoanViewMessage::RuntimeChanged(rt) => {
-                self.runtime_years = rt;
+                self.data.runtime_years = rt;
             }
             LoanViewMessage::ChangeTypeToAnnuity => {
-                self.loan_type = LoanType::Annuity;
+                self.data.loan_type = LoanType::Annuity;
             }
             LoanViewMessage::ChangeTypeToBuildingSavings => {
-                self.loan_type = LoanType::BuildingSavings;
+                self.data.loan_type = LoanType::BuildingSavings;
             }
             LoanViewMessage::NameChanged(name) => {
-                self.name = name;
+                self.data.name = name;
             }
         }
     }
@@ -118,22 +137,22 @@ impl LoanView {
         let mut col = Column::new()
             .padding(20)
             .spacing(5)
-            .push(TextInput::new(&mut self.state.name, "Name", &self.name, LoanViewMessage::NameChanged))
-            .push(TextInput::new(&mut self.state.amount, "Amount", &self.amount, LoanViewMessage::AmountChanged))
-            .push(TextInput::new(&mut self.state.interest_rate, "Interest rate", &self.interest_rate, LoanViewMessage::InterestRateChanged))
-            .push(TextInput::new(&mut self.state.clearance_rate, "Clearance rate", &self.clearance_rate, LoanViewMessage::ClearanceRateChanged))
-            .push(TextInput::new(&mut self.state.runtime_years, "Runtime years", &self.runtime_years, LoanViewMessage::RuntimeChanged))
+            .push(TextInput::new(&mut self.state.name, "Name", &self.data.name, LoanViewMessage::NameChanged))
+            .push(TextInput::new(&mut self.state.amount, "Amount", &self.data.amount, LoanViewMessage::AmountChanged))
+            .push(TextInput::new(&mut self.state.interest_rate, "Interest rate", &self.data.interest_rate, LoanViewMessage::InterestRateChanged))
+            .push(TextInput::new(&mut self.state.clearance_rate, "Clearance rate", &self.data.clearance_rate, LoanViewMessage::ClearanceRateChanged))
+            .push(TextInput::new(&mut self.state.runtime_years, "Runtime years", &self.data.runtime_years, LoanViewMessage::RuntimeChanged))
             .push(
                 Row::new()
                     .push(
                         Button::new(&mut self.state.annuity_btn, Text::new("Annuity"))
                             .on_press(LoanViewMessage::ChangeTypeToAnnuity)
-                            .style(ButtonStyle { active: matches!(self.loan_type, LoanType::Annuity)})
+                            .style(ButtonStyle { active: matches!(self.data.loan_type, LoanType::Annuity)})
                     )
                     .push(
                         Button::new(&mut self.state.building_savings_btn, Text::new("Building savings"))
                             .on_press(LoanViewMessage::ChangeTypeToBuildingSavings)
-                            .style(ButtonStyle { active: matches!(self.loan_type, LoanType::BuildingSavings)})
+                            .style(ButtonStyle { active: matches!(self.data.loan_type, LoanType::BuildingSavings)})
                     )
             )
             .push(Button::new(&mut self.state.calc_button, Text::new("Calc")).on_press(LoanViewMessage::Calc));
@@ -172,11 +191,11 @@ impl LoanView {
     fn calc_building_saving(&mut self) -> Result<CalcResultOverview, Box<dyn Error>> {
         let mut result = CalcResultOverview::default();
 
-        let amount = self.amount.parse::<Decimal>()?;
-        let interest_rate = Decimal::from_str(&self.interest_rate)? / dec!(100);
-        let clearance_rate = Decimal::from_str(&self.clearance_rate)? / dec!(100);
+        let amount = self.data.amount.parse::<Decimal>()?;
+        let interest_rate = Decimal::from_str(&self.data.interest_rate)? / dec!(100);
+        let clearance_rate = Decimal::from_str(&self.data.clearance_rate)? / dec!(100);
         result.monthly_rate = amount * (interest_rate + clearance_rate ) / dec!(12);
-        let runtime = self.runtime_years.parse::<i32>()?;
+        let runtime = self.data.runtime_years.parse::<i32>()?;
 
         for month in 0..=(runtime * 12) {
             let paid_interest_month = amount * interest_rate / dec!(12) as Decimal;
@@ -205,11 +224,11 @@ impl LoanView {
     fn calc_annuity(&mut self) -> Result<CalcResultOverview, Box<dyn Error>> {
         let mut result = CalcResultOverview::default();
 
-        let amount = self.amount.parse::<Decimal>()?;
-        let interest_rate = Decimal::from_str(&self.interest_rate)? / dec!(100);
-        let clearance_rate = Decimal::from_str(&self.clearance_rate)? / dec!(100);
+        let amount = self.data.amount.parse::<Decimal>()?;
+        let interest_rate = Decimal::from_str(&self.data.interest_rate)? / dec!(100);
+        let clearance_rate = Decimal::from_str(&self.data.clearance_rate)? / dec!(100);
         result.monthly_rate = amount * (interest_rate + clearance_rate ) / dec!(12);
-        let runtime = self.runtime_years.parse::<i32>()?;
+        let runtime = self.data.runtime_years.parse::<i32>()?;
 
         let mut remaining = amount;
         for month in 0..=(runtime * 12) {
