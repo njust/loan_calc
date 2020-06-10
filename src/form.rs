@@ -50,7 +50,7 @@ impl FormTextInput {
                 &self.placeholder,
                 &self.value,
                 FormTextInputMessage::InputChanged)
-                .style(style::FormTextInputStyle{}).into(), has_focus, FormTextInputMessage::OnTab
+                .into(), has_focus, FormTextInputMessage::OnTab
         ).into()
     }
 
@@ -109,7 +109,7 @@ impl Form {
         self.inputs.iter_mut().enumerate().map(
             |(idx, el)| el.view()
                 .map(move |m| FormMessage::TextInputMessage(idx, m)))
-            .fold(Column::new(), |acc, el| {
+            .fold(Column::new().spacing(5), |acc, el| {
             acc.push(el)
         }).into()
     }
