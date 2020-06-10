@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 iced = "0.1.1"
 iced_native = "0.2.2"
-iced_wgpu = "0.2.3"
+iced_wgpu = "0.2.2"
 rust_decimal_macros = "1.6.0"
 rust_decimal = "1.6.0"
 nfd = "0.0.4"

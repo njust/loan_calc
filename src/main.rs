@@ -2,6 +2,7 @@ mod style;
 mod loan_view;
 mod util;
 mod overview;
+mod form;
 
 use crate::loan_view::{LoanView, LoanViewMessage, LoanViewData};
 
@@ -10,6 +11,8 @@ use serde::{Serialize, Deserialize};
 use iced::{Button, button, Application, Text, Element, Settings, Row, Column, Length, Command, executor};
 use crate::style::Icons;
 use crate::overview::{Overview, OverviewMessage};
+use crate::form::FormMessage;
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum LoanType {
@@ -30,7 +33,8 @@ enum AppMessage {
     ShowOverview,
     SelectLoan(usize),
     AddLoan,
-    DeleteLoan
+    DeleteLoan,
+    FormMessage(FormMessage)
 }
 
 #[derive(Default)]
@@ -43,6 +47,7 @@ struct App {
     overview_btn: button::State,
     overview: Overview,
     title: String,
+    test: form::Form,
 }
 
 struct LoanTab {
@@ -119,6 +124,8 @@ impl Application for App {
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
         let mut app = Self::default();
         app.title = String::from("Loan calc");
+        app.test.add("gerda");
+        app.test.add("hudel");
         app.add_loan();
         (app, Command::none())
     }
@@ -165,6 +172,9 @@ impl Application for App {
             AppMessage::DeleteLoan => {
                 self.delete_active_load();
             }
+            AppMessage::FormMessage(m) => {
+                self.test.update(m);
+            }
         }
         Command::none()
     }
@@ -209,6 +219,9 @@ impl Application for App {
         }else {
             col = col.push(self.overview.view(&self.loans).map(|m| AppMessage::OverviewMessage(m)));
         }
+        col = col.push(
+            self.test.view().map(|m| AppMessage::FormMessage(m))
+        );
         col.into()
     }
 }

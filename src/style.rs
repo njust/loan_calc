@@ -1,4 +1,5 @@
 use iced::widget::button::Style;
+use iced::text_input;
 use iced::{Color, button, Text, Background};
 use crate::util::icon;
 
@@ -29,6 +30,12 @@ struct Colors {}
 impl Colors {
     fn blue() -> Color {
         Color::from_rgba8(0,190, 255, 0.7)
+    }
+    fn red() -> Color {
+        Color::from_rgba8(190,0, 0, 0.7)
+    }
+    fn grey() -> Color {
+        Color::from_rgba8(190,190, 190, 0.7)
     }
 }
 
@@ -84,6 +91,42 @@ impl button::StyleSheet for ListButtonStyle {
             background: Some(Background::Color(Colors::blue())),
             border_radius: 6,
             ..button::Style::default()
+        }
+    }
+}
+
+pub struct FormTextInputStyle{}
+impl text_input::StyleSheet for FormTextInputStyle {
+    fn active(&self) -> text_input::Style {
+        text_input::Style {
+            background: Background::Color(Color::TRANSPARENT),
+            ..text_input::Style::default()
+        }
+    }
+
+    fn focused(&self) -> text_input::Style {
+        text_input::Style {
+            background: Background::Color(Colors::grey()),
+            ..text_input::Style::default()
+        }
+    }
+
+    fn placeholder_color(&self) -> Color {
+        Colors::grey()
+    }
+
+    fn value_color(&self) -> Color {
+        Color::BLACK
+    }
+
+    fn selection_color(&self) -> Color {
+        Colors::grey()
+    }
+
+    fn hovered(&self) -> text_input::Style {
+        text_input::Style {
+            background: Background::Color(Colors::blue()),
+            ..text_input::Style::default()
         }
     }
 }
