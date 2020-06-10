@@ -18,6 +18,7 @@ pub struct FormTextInput {
     state: text_input::State,
     value: String,
     placeholder: String,
+    on_change: Option<Box<dyn Fn(String)>>,
 }
 
 impl FormTextInput {
@@ -26,6 +27,11 @@ impl FormTextInput {
             placeholder: String::from(placeholder),
             ..Self::default()
         }
+    }
+
+    pub fn on_change<F: 'static + Fn(String)>(mut self, f: F) -> Self {
+        self.on_change = Some(Box::new(f));
+        self
     }
 
     pub fn set_focus(&mut self, focus: bool) {
@@ -50,7 +56,12 @@ impl FormTextInput {
 
     pub fn update(&mut self, msg: FormTextInputMessage) {
         match msg {
-            FormTextInputMessage::InputChanged(text) => self.value = text,
+            FormTextInputMessage::InputChanged(text) => {
+                if let Some(on_change) = &self.on_change {
+                    on_change(text.clone())
+                }
+                self.value = text;
+            },
             FormTextInputMessage::OnTab(_) => ()
         }
     }
@@ -66,8 +77,8 @@ impl Form {
         Self::default()
     }
 
-    pub fn add(&mut self, placeholder: &str) {
-        self.inputs.push(Box::new(FormTextInput::new(placeholder)));
+    pub fn add(&mut self, text_input: FormTextInput) {
+        self.inputs.push(Box::new(text_input));
     }
 
     pub fn select(&mut self, next: bool) {

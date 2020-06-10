@@ -12,7 +12,7 @@ use serde::{Serialize, Deserialize};
 use iced::{Button, button, Application, Text, Element, Settings, Row, Column, Length, Command, executor};
 use crate::style::Icons;
 use crate::overview::{Overview, OverviewMessage};
-use crate::form::FormMessage;
+use crate::form::{FormMessage, FormTextInput};
 
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,10 +125,11 @@ impl Application for App {
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
         let mut app = Self::default();
         app.title = String::from("Loan calc");
-        app.form.add("gerda");
-        app.form.add("hudel");
-        app.form.add("blubber");
-        app.form.add("test");
+        app.form.add(FormTextInput::new("gerda"));
+        app.form.add(FormTextInput::new("hudel"));
+        app.form.add(FormTextInput::new("blubber"));
+        app.form.add(FormTextInput::new("test"));
+
         app.add_loan();
         (app, Command::none())
     }
