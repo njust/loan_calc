@@ -3,6 +3,7 @@ mod loan_view;
 mod util;
 mod overview;
 mod form;
+mod custom_text_input;
 
 use crate::loan_view::{LoanView, LoanViewMessage, LoanViewData};
 
@@ -47,7 +48,7 @@ struct App {
     overview_btn: button::State,
     overview: Overview,
     title: String,
-    test: form::Form,
+    form: form::Form,
 }
 
 struct LoanTab {
@@ -124,8 +125,10 @@ impl Application for App {
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
         let mut app = Self::default();
         app.title = String::from("Loan calc");
-        app.test.add("gerda");
-        app.test.add("hudel");
+        app.form.add("gerda");
+        app.form.add("hudel");
+        app.form.add("blubber");
+        app.form.add("test");
         app.add_loan();
         (app, Command::none())
     }
@@ -173,7 +176,7 @@ impl Application for App {
                 self.delete_active_load();
             }
             AppMessage::FormMessage(m) => {
-                self.test.update(m);
+                self.form.update(m);
             }
         }
         Command::none()
@@ -220,7 +223,7 @@ impl Application for App {
             col = col.push(self.overview.view(&self.loans).map(|m| AppMessage::OverviewMessage(m)));
         }
         col = col.push(
-            self.test.view().map(|m| AppMessage::FormMessage(m))
+            self.form.view().map(|m| AppMessage::FormMessage(m))
         );
         col.into()
     }

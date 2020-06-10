@@ -1,5 +1,7 @@
 use iced::{Element, text_input, text_input::TextInput, Column};
 use crate::style;
+use crate::custom_text_input::CustomTextInput;
+
 #[derive(Debug, Clone)]
 pub enum FormMessage {
     TextInputMessage(usize, FormTextInputMessage)
@@ -7,7 +9,8 @@ pub enum FormMessage {
 
 #[derive(Debug, Clone)]
 pub enum FormTextInputMessage {
-    InputChanged(String)
+    InputChanged(String),
+    OnTab(bool)
 }
 
 #[derive(Default)]
@@ -34,23 +37,27 @@ impl FormTextInput {
     }
 
     pub fn view(&mut self) -> Element<FormTextInputMessage> {
-        TextInput::new(
-            &mut self.state,
-            &self.placeholder,
-            &self.value,
-            FormTextInputMessage::InputChanged)
-            .style(style::FormTextInputStyle{})
-            .into()
+        let has_focus = self.state.is_focused();
+        CustomTextInput::new(
+            TextInput::new(
+                &mut self.state,
+                &self.placeholder,
+                &self.value,
+                FormTextInputMessage::InputChanged)
+                .style(style::FormTextInputStyle{}).into(), has_focus, FormTextInputMessage::OnTab
+        ).into()
     }
 
     pub fn update(&mut self, msg: FormTextInputMessage) {
         match msg {
-            FormTextInputMessage::InputChanged(text) => self.value = text
+            FormTextInputMessage::InputChanged(text) => self.value = text,
+            FormTextInputMessage::OnTab(_) => ()
         }
     }
 }
 #[derive(Default)]
 pub struct Form {
+    active: Option<usize>,
     inputs: Vec<Box<FormTextInput>>,
 }
 
@@ -60,12 +67,30 @@ impl Form {
     }
 
     pub fn add(&mut self, placeholder: &str) {
-        if let Some(prev) = self.inputs.last_mut() {
-            prev.set_focus(false);
-        }
         self.inputs.push(Box::new(FormTextInput::new(placeholder)));
-        if let Some(current) = self.inputs.last_mut() {
-            current.set_focus(true);
+    }
+
+    pub fn select(&mut self, next: bool) {
+        let idx = self.inputs.iter()
+            .enumerate().find(|(idx, e) |e.state.is_focused())
+            .map(|(idx, _e)| idx);
+
+        if let Some(idx) = idx {
+            let next_idx = if next {
+              idx +1
+            }else {
+                if idx == 0 { 0 } else { idx -1 }
+            };
+            self.set_focus(idx, false);
+            self.set_focus(next_idx, true);
+        }else {
+            self.set_focus(0, true);
+        }
+    }
+
+    fn set_focus(&mut self, idx: usize, focus: bool) {
+        if let Some(el) = self.inputs.get_mut(idx) {
+            el.set_focus(focus);
         }
     }
 
@@ -81,8 +106,12 @@ impl Form {
     pub fn update(&mut self, msg: FormMessage) {
         match msg {
             FormMessage::TextInputMessage(idx, m) => {
-                if let Some(el) = self.inputs.get_mut(idx) {
-                    el.update(m)
+                if let FormTextInputMessage::OnTab(shift) = &m {
+                    self.select(!(*shift));
+                }else {
+                    if let Some(el) = self.inputs.get_mut(idx) {
+                        el.update(m)
+                    }
                 }
             }
         }
