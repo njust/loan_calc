@@ -3,8 +3,8 @@ use crate::style;
 use crate::custom_text_input::CustomTextInput;
 
 #[derive(Debug, Clone)]
-pub enum FormMessage {
-    TextInputMessage(usize, FormTextInputMessage)
+pub enum FormMessage<I: 'static+ Clone + Copy> {
+    TextInputMessage(I, usize, FormTextInputMessage)
 }
 
 #[derive(Debug, Clone)]
@@ -14,18 +14,22 @@ pub enum FormTextInputMessage {
 }
 
 #[derive(Default)]
-pub struct FormTextInput {
+pub struct FormTextInput<I: 'static+ Clone+ Copy> {
     state: text_input::State,
+    id: I,
     value: String,
     placeholder: String,
     on_change: Option<Box<dyn Fn(String)>>,
 }
 
-impl FormTextInput {
-    pub fn new(placeholder: &str) -> Self {
+impl<I: 'static+ Clone+ Copy> FormTextInput<I> {
+    pub fn new(id: I, placeholder: &str) -> Self {
         Self {
+            state: Default::default(),
+            id,
+            value: "".to_string(),
             placeholder: String::from(placeholder),
-            ..Self::default()
+            on_change: None
         }
     }
 
@@ -67,17 +71,20 @@ impl FormTextInput {
     }
 }
 #[derive(Default)]
-pub struct Form {
+pub struct Form<I: 'static + Clone+ Copy> {
     active: Option<usize>,
-    inputs: Vec<Box<FormTextInput>>,
+    inputs: Vec<Box<FormTextInput<I>>>,
 }
 
-impl Form {
+impl<I: 'static+ Clone+ Copy> Form<I> {
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            active: None,
+            inputs: vec![]
+        }
     }
 
-    pub fn add(&mut self, text_input: FormTextInput) {
+    pub fn add(&mut self, text_input: FormTextInput<I>) {
         self.inputs.push(Box::new(text_input));
     }
 
@@ -105,18 +112,18 @@ impl Form {
         }
     }
 
-    pub fn view(&mut self) -> Element<FormMessage> {
-        self.inputs.iter_mut().enumerate().map(
-            |(idx, el)| el.view()
-                .map(move |m| FormMessage::TextInputMessage(idx, m)))
-            .fold(Column::new().spacing(5), |acc, el| {
+    pub fn view(&mut self) -> Element<FormMessage<I>> {
+        self.inputs.iter_mut().enumerate().map(|(idx, el)| {
+            let id = el.id.clone();
+            el.view().map(move |m| FormMessage::TextInputMessage(id, idx, m))
+        }).fold(Column::new().spacing(5), |acc, el| {
             acc.push(el)
         }).into()
     }
 
-    pub fn update(&mut self, msg: FormMessage) {
+    pub fn update(&mut self, msg: FormMessage<I>) {
         match msg {
-            FormMessage::TextInputMessage(idx, m) => {
+            FormMessage::TextInputMessage(_id, idx, m) => {
                 if let FormTextInputMessage::OnTab(shift) = &m {
                     self.select(!(*shift));
                 }else {

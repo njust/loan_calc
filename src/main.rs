@@ -12,7 +12,7 @@ use serde::{Serialize, Deserialize};
 use iced::{Button, button, Application, Text, Element, Settings, Row, Column, Length, Command, executor};
 use crate::style::Icons;
 use crate::overview::{Overview, OverviewMessage};
-use crate::form::{FormMessage, FormTextInput};
+use crate::form::{FormMessage, FormTextInput, FormTextInputMessage};
 
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,10 +35,9 @@ enum AppMessage {
     SelectLoan(usize),
     AddLoan,
     DeleteLoan,
-    FormMessage(FormMessage)
+    FormMessage(FormMessage<TestForm>)
 }
 
-#[derive(Default)]
 struct App {
     active: Option<usize>,
     loans: Vec<Box<LoanView>>,
@@ -48,7 +47,7 @@ struct App {
     overview_btn: button::State,
     overview: Overview,
     title: String,
-    form: form::Form,
+    form: form::Form<TestForm>,
 }
 
 struct LoanTab {
@@ -117,19 +116,33 @@ impl App {
     }
 }
 
+#[derive(Clone, Debug, Copy)]
+enum TestForm {
+    Name,
+    Test,
+}
+
 impl Application for App {
     type Executor = executor::Default;
     type Message = AppMessage;
     type Flags = ();
 
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
-        let mut app = Self::default();
-        app.title = String::from("Loan calc");
-        app.form.add(FormTextInput::new("gerda"));
-        app.form.add(FormTextInput::new("hudel"));
-        app.form.add(FormTextInput::new("blubber"));
-        app.form.add(FormTextInput::new("test"));
+        let mut app = Self{
+            active: None,
+            loans: vec![],
+            loan_tabs: vec![],
+            add_loan_btn: Default::default(),
+            del_loan_btn: Default::default(),
+            overview_btn: Default::default(),
+            overview: Default::default(),
+            title: "".to_string(),
+            form: form::Form::new(),
+        };
 
+        app.title = String::from("Loan calc");
+        app.form.add(FormTextInput::new(TestForm::Name, "gerda"));
+        app.form.add(FormTextInput::new(TestForm::Test, "hudel"));
         app.add_loan();
         (app, Command::none())
     }
@@ -177,6 +190,9 @@ impl Application for App {
                 self.delete_active_load();
             }
             AppMessage::FormMessage(m) => {
+                if let FormMessage::TextInputMessage(i, _idx, FormTextInputMessage::InputChanged(value)) = &m {
+                    println!("Value {:?}: {}", i, value);
+                }
                 self.form.update(m);
             }
         }
