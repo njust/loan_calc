@@ -5,7 +5,7 @@ mod overview;
 mod form;
 mod custom_text_input;
 
-use crate::loan_view::{LoanView, LoanViewMessage, LoanViewData};
+use crate::loan_view::{LoanView, LoanViewMessage, LoanViewData, LoanFormData};
 
 use serde::{Serialize, Deserialize};
 
@@ -35,7 +35,7 @@ enum AppMessage {
     SelectLoan(usize),
     AddLoan,
     DeleteLoan,
-    FormMessage(FormMessage<TestForm>)
+    FormMessage(FormMessage<LoanFormData>)
 }
 
 struct App {
@@ -47,7 +47,6 @@ struct App {
     overview_btn: button::State,
     overview: Overview,
     title: String,
-    form: form::Form<TestForm>,
 }
 
 struct LoanTab {
@@ -116,12 +115,6 @@ impl App {
     }
 }
 
-#[derive(Clone, Debug, Copy)]
-enum TestForm {
-    Name,
-    Test,
-}
-
 impl Application for App {
     type Executor = executor::Default;
     type Message = AppMessage;
@@ -137,12 +130,9 @@ impl Application for App {
             overview_btn: Default::default(),
             overview: Default::default(),
             title: "".to_string(),
-            form: form::Form::new(),
         };
 
         app.title = String::from("Loan calc");
-        app.form.add(FormTextInput::new(TestForm::Name, "gerda"));
-        app.form.add(FormTextInput::new(TestForm::Test, "hudel"));
         app.add_loan();
         (app, Command::none())
     }
@@ -193,7 +183,6 @@ impl Application for App {
                 if let FormMessage::TextInputMessage(i, _idx, FormTextInputMessage::InputChanged(value)) = &m {
                     println!("Value {:?}: {}", i, value);
                 }
-                self.form.update(m);
             }
         }
         Command::none()
@@ -239,9 +228,6 @@ impl Application for App {
         }else {
             col = col.push(self.overview.view(&self.loans).map(|m| AppMessage::OverviewMessage(m)));
         }
-        col = col.push(
-            self.form.view().map(|m| AppMessage::FormMessage(m))
-        );
         col.into()
     }
 }

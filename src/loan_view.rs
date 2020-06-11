@@ -10,7 +10,11 @@ use std::{
     error::Error
 };
 use rust_decimal::Decimal;
-use crate::style::ButtonStyle;
+use crate::{
+    style::ButtonStyle,
+    form,
+};
+use crate::form::{FormMessage, FormTextInputMessage};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct LoanViewData {
@@ -29,16 +33,27 @@ pub struct LoanView {
     pub result: Option<CalcResultOverview>
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum LoanFormData {
+    None,
+    Name,
+    Amount,
+    InterestRate,
+    ClearanceRate,
+    RuntimeYears,
+}
+
+impl Default for LoanFormData {
+    fn default() -> Self {
+        LoanFormData::None
+    }
+}
 
 #[derive(Default)]
 struct LoanViewState {
-    name: text_input::State,
-    amount: text_input::State,
-    interest_rate: text_input::State,
-    clearance_rate: text_input::State,
+    form: form::Form<LoanFormData>,
     calc_button: button::State,
     result_scroller: iced::scrollable::State,
-    runtime_years: text_input::State,
     annuity_btn: button::State,
     building_savings_btn: button::State,
 }
@@ -53,6 +68,7 @@ pub enum LoanViewMessage {
     ChangeTypeToAnnuity,
     ChangeTypeToBuildingSavings,
     Calc,
+    LoanForm(FormMessage<LoanFormData>),
 }
 
 
@@ -81,8 +97,18 @@ impl CalcResult {
 
 impl LoanView {
     pub fn new(name: String) -> Self {
+        let mut form = form::Form::new()
+            .push(LoanFormData::Name,"Name", Some(name.clone()))
+            .push(LoanFormData::Amount, "Amount", None)
+            .push(LoanFormData::InterestRate, "Interest rate", None)
+            .push(LoanFormData::ClearanceRate,"Clearance rate", None)
+            .push(LoanFormData::RuntimeYears,"Runtime", None);
+
         Self {
-            state: Default::default(),
+            state: LoanViewState {
+                form,
+                ..Default::default()
+            },
             data: LoanViewData {
                 name,
                 ..LoanViewData::default()
@@ -130,6 +156,19 @@ impl LoanView {
             LoanViewMessage::NameChanged(name) => {
                 self.data.name = name;
             }
+            LoanViewMessage::LoanForm(m) => {
+                if let FormMessage::TextInputMessage(i, _idx, FormTextInputMessage::InputChanged(value) ) = &m {
+                    match i {
+                        LoanFormData::Name => self.data.name = value.clone(),
+                        LoanFormData::Amount => self.data.amount = value.clone(),
+                        LoanFormData::InterestRate => self.data.interest_rate = value.clone(),
+                        LoanFormData::ClearanceRate => self.data.clearance_rate = value.clone(),
+                        LoanFormData::RuntimeYears => self.data.runtime_years = value.clone(),
+                        _ => ()
+                    }
+                }
+                self.state.form.update(m);
+            },
         }
     }
 
@@ -137,11 +176,7 @@ impl LoanView {
         let mut col = Column::new()
             .padding(20)
             .spacing(5)
-            .push(TextInput::new(&mut self.state.name, "Name", &self.data.name, LoanViewMessage::NameChanged))
-            .push(TextInput::new(&mut self.state.amount, "Amount", &self.data.amount, LoanViewMessage::AmountChanged))
-            .push(TextInput::new(&mut self.state.interest_rate, "Interest rate", &self.data.interest_rate, LoanViewMessage::InterestRateChanged))
-            .push(TextInput::new(&mut self.state.clearance_rate, "Clearance rate", &self.data.clearance_rate, LoanViewMessage::ClearanceRateChanged))
-            .push(TextInput::new(&mut self.state.runtime_years, "Runtime years", &self.data.runtime_years, LoanViewMessage::RuntimeChanged))
+            .push(self.state.form.view().map(|m| LoanViewMessage::LoanForm(m)))
             .push(
                 Row::new()
                     .push(

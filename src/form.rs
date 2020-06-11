@@ -23,11 +23,11 @@ pub struct FormTextInput<I: 'static+ Clone+ Copy> {
 }
 
 impl<I: 'static+ Clone+ Copy> FormTextInput<I> {
-    pub fn new(id: I, placeholder: &str) -> Self {
+    pub fn new(id: I, value: String, placeholder: &str) -> Self {
         Self {
             state: Default::default(),
             id,
-            value: "".to_string(),
+            value,
             placeholder: String::from(placeholder),
             on_change: None
         }
@@ -84,8 +84,9 @@ impl<I: 'static+ Clone+ Copy> Form<I> {
         }
     }
 
-    pub fn add(&mut self, text_input: FormTextInput<I>) {
-        self.inputs.push(Box::new(text_input));
+    pub fn push(mut self, id: I, placeholder: &str, value: Option<String>) -> Self {
+        self.inputs.push(Box::new(FormTextInput::new(id, value.unwrap_or(String::new()), placeholder)));
+        self
     }
 
     pub fn select(&mut self, next: bool) {
