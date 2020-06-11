@@ -1,5 +1,4 @@
 use iced::{Element, text_input, text_input::TextInput, Column};
-use crate::style;
 use crate::custom_text_input::CustomTextInput;
 
 #[derive(Debug, Clone)]
@@ -19,7 +18,6 @@ pub struct FormTextInput<I: 'static+ Clone+ Copy> {
     id: I,
     value: String,
     placeholder: String,
-    on_change: Option<Box<dyn Fn(String)>>,
 }
 
 impl<I: 'static+ Clone+ Copy> FormTextInput<I> {
@@ -28,14 +26,8 @@ impl<I: 'static+ Clone+ Copy> FormTextInput<I> {
             state: Default::default(),
             id,
             value,
-            placeholder: String::from(placeholder),
-            on_change: None
+            placeholder: String::from(placeholder)
         }
-    }
-
-    pub fn on_change<F: 'static + Fn(String)>(mut self, f: F) -> Self {
-        self.on_change = Some(Box::new(f));
-        self
     }
 
     pub fn set_focus(&mut self, focus: bool) {
@@ -61,9 +53,6 @@ impl<I: 'static+ Clone+ Copy> FormTextInput<I> {
     pub fn update(&mut self, msg: FormTextInputMessage) {
         match msg {
             FormTextInputMessage::InputChanged(text) => {
-                if let Some(on_change) = &self.on_change {
-                    on_change(text.clone())
-                }
                 self.value = text;
             },
             FormTextInputMessage::OnTab(_) => ()
@@ -72,14 +61,12 @@ impl<I: 'static+ Clone+ Copy> FormTextInput<I> {
 }
 #[derive(Default)]
 pub struct Form<I: 'static + Clone+ Copy> {
-    active: Option<usize>,
     inputs: Vec<Box<FormTextInput<I>>>,
 }
 
 impl<I: 'static+ Clone+ Copy> Form<I> {
     pub fn new() -> Self {
         Self {
-            active: None,
             inputs: vec![]
         }
     }
@@ -91,7 +78,7 @@ impl<I: 'static+ Clone+ Copy> Form<I> {
 
     pub fn select(&mut self, next: bool) {
         let idx = self.inputs.iter()
-            .enumerate().find(|(idx, e) |e.state.is_focused())
+            .enumerate().find(|(_idx, e) |e.state.is_focused())
             .map(|(idx, _e)| idx);
 
         if let Some(idx) = idx {

@@ -12,8 +12,7 @@ use serde::{Serialize, Deserialize};
 use iced::{Button, button, Application, Text, Element, Settings, Row, Column, Length, Command, executor};
 use crate::style::Icons;
 use crate::overview::{Overview, OverviewMessage};
-use crate::form::{FormMessage, FormTextInput, FormTextInputMessage};
-
+use crate::form::{FormMessage, FormTextInputMessage};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum LoanType {
@@ -34,10 +33,10 @@ enum AppMessage {
     ShowOverview,
     SelectLoan(usize),
     AddLoan,
-    DeleteLoan,
-    FormMessage(FormMessage<LoanFormData>)
+    DeleteLoan
 }
 
+#[derive(Default)]
 struct App {
     active: Option<usize>,
     loans: Vec<Box<LoanView>>,
@@ -121,17 +120,7 @@ impl Application for App {
     type Flags = ();
 
     fn new(_flags: Self::Flags) -> (Self, Command<Self::Message>) {
-        let mut app = Self{
-            active: None,
-            loans: vec![],
-            loan_tabs: vec![],
-            add_loan_btn: Default::default(),
-            del_loan_btn: Default::default(),
-            overview_btn: Default::default(),
-            overview: Default::default(),
-            title: "".to_string(),
-        };
-
+        let mut app = Self::default();
         app.title = String::from("Loan calc");
         app.add_loan();
         (app, Command::none())
@@ -144,9 +133,9 @@ impl Application for App {
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         match message {
             AppMessage::LoanViewMessage(idx, msg) => {
-                if let LoanViewMessage::NameChanged(name) = &msg {
+                if let LoanViewMessage::LoanForm(FormMessage::TextInputMessage(LoanFormData::Name, _idx, FormTextInputMessage::InputChanged(value))) = &msg {
                     if let Some(tab) = self.loan_tabs.get_mut(idx) {
-                        tab.name = name.to_owned();
+                        tab.name = value.to_owned();
                     }
                 }
                 if let Some(calc) = self.loans.get_mut(idx) {
@@ -178,11 +167,6 @@ impl Application for App {
             }
             AppMessage::DeleteLoan => {
                 self.delete_active_load();
-            }
-            AppMessage::FormMessage(m) => {
-                if let FormMessage::TextInputMessage(i, _idx, FormTextInputMessage::InputChanged(value)) = &m {
-                    println!("Value {:?}: {}", i, value);
-                }
             }
         }
         Command::none()

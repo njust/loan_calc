@@ -1,8 +1,5 @@
-use iced::text_input;
-
-use iced_native::{layout, Background, Color, Element, Hasher, Layout, Length, MouseCursor, Point, Size, Widget, Event, Clipboard, input::keyboard, input};
+use iced_native::{layout, Element, Hasher, Layout, Length, MouseCursor, Point, Widget, Event, Clipboard, input::keyboard, input};
 use iced_wgpu::{Defaults, Primitive, Renderer};
-use iced::keyboard::ModifiersState;
 
 pub struct CustomTextInput<'s, Message>
 where Message: Clone {

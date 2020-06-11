@@ -2,7 +2,7 @@ use crate::{LoanType};
 use rust_decimal_macros::*;
 use std::str::FromStr;
 
-use iced::{Button, button, TextInput, Text, Element, Row, Column, text_input, Scrollable, Length};
+use iced::{Button, button, Text, Element, Row, Column, Scrollable, Length};
 
 use serde::{Deserialize, Serialize};
 
@@ -60,11 +60,6 @@ struct LoanViewState {
 
 #[derive(Debug, Clone)]
 pub enum LoanViewMessage {
-    NameChanged(String),
-    AmountChanged(String),
-    InterestRateChanged(String),
-    ClearanceRateChanged(String),
-    RuntimeChanged(String),
     ChangeTypeToAnnuity,
     ChangeTypeToBuildingSavings,
     Calc,
@@ -97,7 +92,7 @@ impl CalcResult {
 
 impl LoanView {
     pub fn new(name: String) -> Self {
-        let mut form = form::Form::new()
+        let form = form::Form::new()
             .push(LoanFormData::Name,"Name", Some(name.clone()))
             .push(LoanFormData::Amount, "Amount", None)
             .push(LoanFormData::InterestRate, "Interest rate", None)
@@ -125,15 +120,6 @@ impl LoanView {
     }
     pub fn update(&mut self, message: LoanViewMessage) {
         match message {
-            LoanViewMessage::AmountChanged(amount) => {
-                self.data.amount = amount;
-            }
-            LoanViewMessage::InterestRateChanged(rate) => {
-                self.data.interest_rate = rate;
-            }
-            LoanViewMessage::ClearanceRateChanged(clearance) => {
-                self.data.clearance_rate = clearance;
-            }
             LoanViewMessage::Calc => {
                 self.result.take();
                 let result = match self.data.loan_type {
@@ -144,17 +130,11 @@ impl LoanView {
                     self.result = Some(result);
                 }
             }
-            LoanViewMessage::RuntimeChanged(rt) => {
-                self.data.runtime_years = rt;
-            }
             LoanViewMessage::ChangeTypeToAnnuity => {
                 self.data.loan_type = LoanType::Annuity;
             }
             LoanViewMessage::ChangeTypeToBuildingSavings => {
                 self.data.loan_type = LoanType::BuildingSavings;
-            }
-            LoanViewMessage::NameChanged(name) => {
-                self.data.name = name;
             }
             LoanViewMessage::LoanForm(m) => {
                 if let FormMessage::TextInputMessage(i, _idx, FormTextInputMessage::InputChanged(value) ) = &m {
