@@ -92,13 +92,7 @@ impl CalcResult {
 
 impl LoanView {
     pub fn new(name: String) -> Self {
-        let form = form::Form::new()
-            .push(LoanFormData::Name,"Name", Some(name.clone()))
-            .push(LoanFormData::Amount, "Amount", None)
-            .push(LoanFormData::InterestRate, "Interest rate", None)
-            .push(LoanFormData::ClearanceRate,"Clearance rate", None)
-            .push(LoanFormData::RuntimeYears,"Runtime", None);
-
+        let form = Self::get_form(name.clone(), None);
         Self {
             state: LoanViewState {
                 form,
@@ -111,9 +105,23 @@ impl LoanView {
             result: None
         }
     }
+
+    fn get_form(name: String, data: Option<&LoanViewData>) -> form::Form<LoanFormData> {
+        form::Form::new()
+            .push(LoanFormData::Name,"Name", Some(name))
+            .push(LoanFormData::Amount, "Amount", data.map(|d|d.amount.clone()))
+            .push(LoanFormData::InterestRate, "Interest rate", data.map(|d| d.interest_rate.clone()))
+            .push(LoanFormData::ClearanceRate,"Clearance rate", data.map(|d| d.clearance_rate.clone()))
+            .push(LoanFormData::RuntimeYears,"Runtime", data.map(|d| d.runtime_years.clone()))
+    }
+
     pub fn new_with_data(data: LoanViewData) -> Self {
+        let form = Self::get_form(data.name.clone(), Some(&data));
         Self {
-            state: Default::default(),
+            state: LoanViewState {
+                form,
+                ..LoanViewState::default()
+            },
             data,
             result: None
         }
